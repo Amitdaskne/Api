@@ -1,0 +1,6 @@
+{
+  "name": "AMITCASH",
+  "description": "AMITCASH: A premium and secure UPI mobile payments wallet & instant scanner pre-seeded with bonus balance.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
