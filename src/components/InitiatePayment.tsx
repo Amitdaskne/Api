@@ -151,11 +151,11 @@ export default function InitiatePayment({
               Select Debit Bank Account Source
             </label>
             <div className="space-y-2 max-h-[140px] overflow-y-auto">
-              {bankAccounts.map((account) => {
+              {bankAccounts.map((account, idx) => {
                 const isSelected = account.id === activeBankId;
                 return (
                   <div
-                    key={account.id}
+                    key={`${account.id}-${idx}`}
                     onClick={() => onSelectBank(account.id)}
                     className={`p-3 rounded-2xl border cursor-pointer flex justify-between items-center transition-all ${
                       isSelected

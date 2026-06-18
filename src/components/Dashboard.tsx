@@ -78,6 +78,11 @@ export default function Dashboard({
       return;
     }
 
+    if (userProfile && trimmed.toLowerCase() === userProfile.upiId.toLowerCase()) {
+      setErrorAndClear('Self-transfer is not permitted! You cannot send money to your own UPI ID.');
+      return;
+    }
+
     onInitiateRawUpi(trimmed);
   };
 
@@ -252,14 +257,14 @@ export default function Dashboard({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             
-            {paymentSources.map((source) => {
+            {paymentSources.map((source, idx) => {
               const isCryptoWallet = source.id === 'wallet';
               const isSelected = source.id === userProfile.activeBankId;
               const isVerifiedVisible = !!unlockedBalances[source.id];
 
               return (
                 <div
-                  key={source.id}
+                  key={`${source.id}-${idx}`}
                   onClick={() => onSelectBank(source.id)}
                   className={`relative p-5 rounded-3xl border cursor-pointer transition-all ${
                     isCryptoWallet
@@ -391,9 +396,9 @@ export default function Dashboard({
           Quick Contacts / Transfer Hub
         </h4>
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x">
-          {payees.map((payee) => (
+          {payees.map((payee, idx) => (
             <button
-              key={payee.id}
+              key={`${payee.id || 'payee'}-${idx}`}
               onClick={() => onSelectPayee(payee)}
               className="flex flex-col items-center justify-center space-y-1.5 shrink-0 bg-white hover:bg-indigo-50/20 border border-slate-100 rounded-2xl p-4 w-28 snap-start transition-all shadow-sm cursor-pointer group"
             >
@@ -459,12 +464,12 @@ export default function Dashboard({
 
         {filteredTxs.length > 0 ? (
           <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-            {filteredTxs.map((tx) => {
+            {filteredTxs.map((tx, idx) => {
               const isDebit = tx.type === 'SEND';
               
               return (
                 <div 
-                  key={tx.id} 
+                  key={`${tx.id || 'tx'}-${idx}`} 
                   className="py-3 flex items-center justify-between hover:bg-slate-50/50 rounded-xl px-2 transition-colors cursor-pointer group"
                   onClick={() => onViewReceipt(tx)}
                 >
@@ -551,7 +556,7 @@ export default function Dashboard({
             {/* Pin Dots Display Area */}
             <div className="py-6 flex flex-col items-center justify-center bg-white">
               <p className="text-xs font-semibold text-slate-700 mb-3">
-                Enter 4-Digit UPI PIN <span className="text-indigo-500 font-bold">(Hint: 1234)</span>
+                Enter 4-Digit UPI PIN
               </p>
               
               {/* Masked circles dots */}

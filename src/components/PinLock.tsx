@@ -137,7 +137,7 @@ export default function PinLock({ userProfile, onUnlocked, onSetPin }: PinLockPr
               exit={{ opacity: 0, y: -10 }}
             >
               <h3 className="text-xl font-black text-white tracking-tight">Enter Secure Security PIN</h3>
-              <p className="text-xs text-slate-400 mt-1.5 px-4">
+              <p className="text-xs text-slate-400 mt-1.5 px-4 animate-pulse">
                 Verify your 4-digit security PIN to unlock your dashboard balance and assets.
               </p>
             </motion.div>

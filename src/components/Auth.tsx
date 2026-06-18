@@ -26,6 +26,7 @@ export default function Auth({ onUserAuthenticated }: AuthProps) {
   const [name, setName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [upiId, setUpiId] = useState<string>('');
+  const [customUpiPin, setCustomUpiPin] = useState<string>('1234');
   
   // Custom Cloudinary upload status
   const [avatarUrl, setAvatarUrl] = useState<string>('');
@@ -84,6 +85,12 @@ export default function Auth({ onUserAuthenticated }: AuthProps) {
       return;
     }
 
+    // UPI PIN validation
+    if (!/^\d{4}$/.test(customUpiPin)) {
+      setErrorText('Please enter a 4-digit numeric UPI PIN (e.g. 1988).');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -102,7 +109,7 @@ export default function Auth({ onUserAuthenticated }: AuthProps) {
           accountNumber: '•••• 1988',
           ifsc: 'AMIT0001988',
           balance: 50.00, // Starts with exactly 50 Rupees
-          upiPin: '1234', // Since PIN is 4-digit now!
+          upiPin: customUpiPin, // Since PIN is user-defined now!
           bankType: 'SAVINGS' as const,
           logoColor: '#002E6E',
         }
@@ -121,6 +128,7 @@ export default function Auth({ onUserAuthenticated }: AuthProps) {
           activeBankId: defaultBanks[0].id,
           bankAccounts: defaultBanks,
           avatarUrl: avatarUrl || null,
+          appPin: customUpiPin, // Keep locked screen and balance check PIN matched!
           createdAt: new Date().toISOString()
         });
       } catch (fbErr) {
@@ -333,6 +341,25 @@ export default function Auth({ onUserAuthenticated }: AuthProps) {
                         </label>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Select custom UPI PIN */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Set 4-Digit UPI PIN</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                      <input
+                        type="password"
+                        pattern="[0-9]{4}"
+                        maxLength={4}
+                        required
+                        value={customUpiPin}
+                        onChange={(e) => setCustomUpiPin(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="e.g. 1988"
+                        className="w-full text-xs bg-slate-900 border border-slate-800 text-white rounded-xl py-3 pl-10 pr-4 outline-none focus:border-indigo-500 transition-all font-mono"
+                      />
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-1">This PIN will be used to show your balance and authorize transactions.</p>
                   </div>
 
                   {/* Starting reward notice */}

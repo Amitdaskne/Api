@@ -13,7 +13,6 @@ import Receipt from './components/Receipt';
 import GenerateQR from './components/GenerateQR';
 import GenerateCodes from './components/GenerateCodes';
 import Auth from './components/Auth';
-import PinLock from './components/PinLock';
 import EmailVerificationScreen from './components/EmailVerificationScreen';
 
 // Firebase core SDK references
@@ -70,9 +69,6 @@ export default function App() {
   // Firebase Auth states
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
-
-  // Lockscreen verification code
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
 
   // Firestore profile and transaction list records
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -236,7 +232,6 @@ export default function App() {
     try {
       await signOut(auth);
       setFirebaseUser(null);
-      setIsUnlocked(false); // Relock the workspace
     } catch (err) {
       console.error('Logout failure:', err);
     }
@@ -329,6 +324,10 @@ export default function App() {
 
   // Launch transfer flow for a payee contact
   const initiatePayeePayment = (payee: Payee) => {
+    if (profile && payee.upiId.toLowerCase() === profile.upiId.toLowerCase()) {
+      alert("Self-transfer is not permitted! You cannot pay your own UPI ID.");
+      return;
+    }
     setActivePaymentParams({
       pa: payee.upiId,
       pn: payee.name,
@@ -338,6 +337,10 @@ export default function App() {
 
   // Launch transfer flow for raw typed UPI Address
   const initiateRawAddressPayment = (upiId: string) => {
+    if (profile && upiId.toLowerCase() === profile.upiId.toLowerCase()) {
+      alert("Self-transfer is not permitted! You cannot send money to your own UPI ID.");
+      return;
+    }
     setActivePaymentParams({
       pa: upiId,
       pn: upiId.split('@')[0], 
@@ -346,6 +349,10 @@ export default function App() {
 
   // Success QR scan callback
   const handleQrScanSuccess = (params: DecodedUpiContent) => {
+    if (profile && params.pa.toLowerCase() === profile.upiId.toLowerCase()) {
+      alert("Self-transfer is not permitted! You cannot scan your own receipt QR to pay yourself.");
+      return;
+    }
     setIsScannerOpen(false);
     setActivePaymentParams(params);
   };
@@ -424,6 +431,71 @@ export default function App() {
         const docRef = await addDoc(collection(db, 'transactions'), newTxData);
         const newTx: Transaction = { id: docRef.id, ...newTxData };
 
+        // Check if the recipient has a registered account in our app's database to automatically credit them
+        let recipientDoc: any = null;
+        let recipientId: string = '';
+
+        try {
+          const q = query(collection(db, 'users'), where('upiId', '==', payeeUpi));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            recipientDoc = querySnapshot.docs[0];
+            recipientId = recipientDoc.id;
+          } else {
+            const qLower = query(collection(db, 'users'), where('upiId', '==', payeeUpi.toLowerCase()));
+            const querySnapshotLower = await getDocs(qLower);
+            if (!querySnapshotLower.empty) {
+              recipientDoc = querySnapshotLower.docs[0];
+              recipientId = recipientDoc.id;
+            } else {
+              const qUpper = query(collection(db, 'users'), where('upiId', '==', payeeUpi.toUpperCase()));
+              const querySnapshotUpper = await getDocs(qUpper);
+              if (!querySnapshotUpper.empty) {
+                recipientDoc = querySnapshotUpper.docs[0];
+                recipientId = recipientDoc.id;
+              }
+            }
+          }
+        } catch (queryErr) {
+          console.warn('Recipient query lookup skipped or failed:', queryErr);
+        }
+
+        if (recipientDoc && recipientId && recipientId !== firebaseUser.uid) {
+          const recipientData = recipientDoc.data();
+          const nextRecipientBalance = (recipientData.balance !== undefined ? recipientData.balance : 50.00) + amount;
+          
+          const recipientAccounts = (recipientData.bankAccounts || []).map((b: any) => {
+            if (b.id === 'amit-bank' || b.id === recipientData.activeBankId) {
+              return {
+                ...b,
+                balance: (b.balance !== undefined ? b.balance : 50.00) + amount
+              };
+            }
+            return b;
+          });
+          
+          const recipientRef = doc(db, 'users', recipientId);
+          await updateDoc(recipientRef, {
+            bankAccounts: recipientAccounts,
+            balance: nextRecipientBalance
+          });
+
+          const receiverTxData = {
+            type: 'RECEIVE' as const,
+            name: profile.name || 'Verified Sender',
+            upiId: profile.upiId,
+            amount,
+            status: 'SUCCESS' as const,
+            date: new Date().toISOString(),
+            refNo,
+            remarks: remarks || 'Peer UPI Transfer Credit',
+            bankName: 'AMIT PAYMENTS BANK',
+            userId: recipientId
+          };
+          await addDoc(collection(db, 'transactions'), receiverTxData);
+        }
+
         // Save recipient to contact links list
         const exists = payees.some(py => py.upiId.toLowerCase() === payeeUpi.toLowerCase());
         if (!exists) {
@@ -483,23 +555,7 @@ export default function App() {
     );
   }
 
-  // Enforce secure 4-digit PIN lockscreen (always use PIN first!)
-  if (!isUnlocked) {
-    return (
-      <PinLock 
-        userProfile={profile}
-        onUnlocked={() => setIsUnlocked(true)}
-        onSetPin={async (newPin) => {
-          const userRef = doc(db, 'users', firebaseUser.uid);
-          await updateDoc(userRef, {
-            appPin: newPin
-          });
-        }}
-      />
-    );
-  }
-
-  // Enforce real-time email verification check AFTER the PIN lock screen resolves
+  // Enforce real-time email verification check immediately after authentication
   if (firebaseUser && !firebaseUser.emailVerified) {
     return (
       <EmailVerificationScreen 
@@ -541,10 +597,10 @@ export default function App() {
 
           {/* User profile identifier & Logout mechanism */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 p-1.5 pl-3 rounded-full hidden sm:flex">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 p-1 py-1 sm:p-1.5 sm:pl-3 rounded-full">
               <div className="text-right">
-                <span className="text-[11px] font-bold text-slate-800 block leading-tight">{profile.name}</span>
-                <span className="text-[9px] text-slate-400 font-mono block tracking-tight">{profile.upiId}</span>
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 block leading-tight">{profile.name}</span>
+                <span className="text-[8px] sm:text-[9px] text-indigo-600 font-mono block tracking-tight font-extrabold">{profile.upiId}</span>
               </div>
               
               {/* Cloudinary uploaded picture support */}
@@ -552,11 +608,11 @@ export default function App() {
                 <img 
                   src={profile.avatarUrl} 
                   alt={profile.name} 
-                  className="w-8 h-8 rounded-full object-cover border border-slate-200" 
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-slate-200" 
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shadow-inner">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px] sm:text-xs shadow-inner">
                   {profile.name.substring(0, 2).toUpperCase()}
                 </div>
               )}

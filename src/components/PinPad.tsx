@@ -135,7 +135,7 @@ export default function PinPad({
         {/* Pin Display Area */}
         <div className="py-6 flex flex-col items-center justify-center bg-white">
           <p className="text-xs font-semibold text-slate-700 mb-3">
-            Enter {targetPinLength}-Digit UPI PIN {bankAccount.id === 'wallet' && <span className="text-indigo-600 font-bold">(Hint: 1234)</span>}
+            Enter {targetPinLength}-Digit UPI PIN
           </p>
           
           {/* Masked circles dots */}
