@@ -31,6 +31,15 @@ export interface BankAccount {
   logoColor: string;
 }
 
+export interface SecureVoucher {
+  code: string;
+  amount: number;
+  createdAt: string;
+  isRedeemed: boolean;
+  redeemedAt?: string;
+  creatorUpi: string;
+}
+
 export interface UserProfile {
   name: string;
   phone: string;
@@ -41,6 +50,7 @@ export interface UserProfile {
   activeBankId: string;
   avatarUrl?: string;
   appPin?: string; // Secure 4-digit PIN for lockscreen and balance enquiry
+  generatedCodes?: SecureVoucher[];
 }
 
 export interface DecodedUpiContent {

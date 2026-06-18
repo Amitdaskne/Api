@@ -11,6 +11,7 @@ import InitiatePayment from './components/InitiatePayment';
 import PinPad from './components/PinPad';
 import Receipt from './components/Receipt';
 import GenerateQR from './components/GenerateQR';
+import GenerateCodes from './components/GenerateCodes';
 import Auth from './components/Auth';
 import PinLock from './components/PinLock';
 import EmailVerificationScreen from './components/EmailVerificationScreen';
@@ -64,7 +65,7 @@ const DEFAULT_PAYEES: Payee[] = [
 
 export default function App() {
   // Navigation Tabs
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'CREATE_QR'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'CREATE_QR' | 'GENERATE_CODES'>('DASHBOARD');
 
   // Firebase Auth states
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -101,11 +102,7 @@ export default function App() {
   // Sync Auth status
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && user.emailVerified) {
-        setFirebaseUser(user);
-      } else {
-        setFirebaseUser(null);
-      }
+      setFirebaseUser(user);
       setCheckingAuth(false);
     });
     return () => unsubscribe();
@@ -604,10 +601,10 @@ export default function App() {
         </div>
 
         {/* View Segment Tabs selection */}
-        <div className="flex border-b border-slate-200">
+        <div className="flex flex-wrap border-b border-slate-200">
           <button
             onClick={() => setActiveTab('DASHBOARD')}
-            className={`py-3 px-6 font-sans font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            className={`py-3 px-5 sm:px-6 font-sans font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === 'DASHBOARD'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -617,13 +614,23 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('CREATE_QR')}
-            className={`py-3 px-6 font-sans font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            className={`py-3 px-5 sm:px-6 font-sans font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === 'CREATE_QR'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
           >
             Request billing / Create QR
+          </button>
+          <button
+            onClick={() => setActiveTab('GENERATE_CODES')}
+            className={`py-3 px-5 sm:px-6 font-sans font-bold text-xs uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+              activeTab === 'GENERATE_CODES'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Generate Secure Codes
           </button>
         </div>
 
@@ -640,8 +647,10 @@ export default function App() {
               onViewReceipt={(tx) => setViewingReceiptTx(tx)}
               onSimulateReceive={handleSimulateReceive}
             />
-          ) : (
+          ) : activeTab === 'CREATE_QR' ? (
             <GenerateQR userProfile={profile} />
+          ) : (
+            <GenerateCodes userProfile={profile} />
           )}
         </div>
 
